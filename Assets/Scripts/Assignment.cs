@@ -8,6 +8,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+using System;
 
 
 #region Assignment Instructions
@@ -74,100 +75,100 @@ public partial class PartyCharacter
 static public class AssignmentPart1
 {
     private static string saveFilePath = "SaveDateParty.txt";
+
     static public void SavePartyButtonPressed()
     {
-        using (StreamWriter writer = new StreamWriter(saveFilePath))
+        try
         {
-            foreach (PartyCharacter pc in GameContent.partyCharacters)
+            using (StreamWriter writer = new StreamWriter(saveFilePath))
             {
-                // Save character attributes in a comma-separated line
-                writer.WriteLine($"{pc.classID},{pc.health},{pc.mana},{pc.strength},{pc.agility},{pc.wisdom}");
-
-                // Save equipment as space-separated values on the next line
-                foreach (int equip in pc.equipment)
+                foreach (var partyCharacter in GameContent.partyCharacters)
                 {
-                    writer.Write($"{equip} ");
-                }
-                writer.WriteLine(); // Ensure a new line after writing the equipment
-            }
-        }
-        Debug.Log("Party data saved successfully!");
-    }
+                    // Save character attributes as a comma-separated line
+                    writer.WriteLine($"{partyCharacter.classID},{partyCharacter.health},{partyCharacter.mana},{partyCharacter.strength},{partyCharacter.agility},{partyCharacter.wisdom}");
 
+                    // Save equipment IDs as space-separated values
+                    writer.WriteLine(string.Join(" ", partyCharacter.equipment));
+                }
+            }
+
+            Debug.Log("Party data saved successfully!");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"Error saving party data: {ex.Message}");
+        }
+    }
 
     static public void LoadPartyButtonPressed()
     {
         GameContent.partyCharacters.Clear(); // Clear existing party data
 
-        if (File.Exists(saveFilePath))
+        if (!File.Exists(saveFilePath))
         {
-            Debug.Log("Save file found!");
+            Debug.LogError("Save file not found!");
+            return;
+        }
 
+        try
+        {
             using (StreamReader reader = new StreamReader(saveFilePath))
             {
                 string line;
 
-                while ((line = reader.ReadLine()) != null) // Read character attributes line by line
+                while ((line = reader.ReadLine()) != null)
                 {
-                    Debug.Log($"Line content: {line}");
-
-                    // Split the line by commas to get character attributes
-                    string[] characterData = line.Split(',');
-
-                    // Ensure there are exactly 6 attributes (classID, health, mana, strength, agility, wisdom)
-                    if (characterData.Length == 6)
+                    var characterData = line.Split(',');
+                    if (characterData.Length != 6)
                     {
-                        // Parse the character attributes
-                        if (int.TryParse(characterData[0], out int classID) &&
-                            int.TryParse(characterData[1], out int health) &&
-                            int.TryParse(characterData[2], out int mana) &&
-                            int.TryParse(characterData[3], out int strength) &&
-                            int.TryParse(characterData[4], out int agility) &&
-                            int.TryParse(characterData[5], out int wisdom))
+                        Debug.LogError("Incorrect number of data elements in the line!");
+                        continue;
+                    }
+
+                    // Parse the character attributes
+                    if (int.TryParse(characterData[0], out int classID) &&
+                        int.TryParse(characterData[1], out int health) &&
+                        int.TryParse(characterData[2], out int mana) &&
+                        int.TryParse(characterData[3], out int strength) &&
+                        int.TryParse(characterData[4], out int agility) &&
+                        int.TryParse(characterData[5], out int wisdom))
+                    {
+                        var partyCharacter = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
+
+                        // Read the next line for equipment data
+                        string equipmentLine = reader.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(equipmentLine))
                         {
-                            // Create the PartyCharacter
-                            PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
-
-                            // Read the next line, which contains the equipment data
-                            string equipmentLine = reader.ReadLine();
-                            if (!string.IsNullOrWhiteSpace(equipmentLine)) // Check if the equipment line is not empty
+                            var equipmentIDs = equipmentLine.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+                            foreach (var equip in equipmentIDs)
                             {
-                                string[] equipmentData = equipmentLine.Split(' ');
-
-                                foreach (string equip in equipmentData)
+                                if (int.TryParse(equip, out int equipmentID))
                                 {
-                                    if (int.TryParse(equip, out int equipmentID))
-                                    {
-                                        pc.equipment.AddLast(equipmentID); // Add equipment to the character
-                                    }
+                                    partyCharacter.equipment.AddLast(equipmentID);
                                 }
                             }
+                        }
 
-                            // Add the character to the party list
-                            GameContent.partyCharacters.AddLast(pc);
-                        }
-                        else
-                        {
-                            Debug.LogError($"Failed to parse character attributes: {line}");
-                        }
+                        // Add the party character to the list
+                        GameContent.partyCharacters.AddLast(partyCharacter);
                     }
                     else
                     {
-                        Debug.LogError("Incorrect number of data elements in the line!");
+                        Debug.LogError($"Failed to parse character attributes: {line}");
                     }
                 }
             }
+
+            Debug.Log("Party data loaded successfully!");
         }
-        else
+        catch (Exception ex)
         {
-            Debug.LogError("Save file not found!");
+            Debug.LogError($"Error loading party data: {ex.Message}");
         }
 
         GameContent.RefreshUI(); // Update the UI with the loaded data
     }
-
 }
-
 
 #endregion
 
