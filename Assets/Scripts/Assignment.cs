@@ -319,9 +319,42 @@ static public class AssignmentPart2
 
     static public void DeletePartyButtonPressed()
     {
+        // Retrieve the party name entered by the user
+        string partyName = GameContent.GetPartyNameFromInput();
+
+        // Validate the party name
+        if (string.IsNullOrWhiteSpace(partyName))
+        {
+            Debug.LogError("Party name cannot be empty or whitespace!");
+            return;
+        }
+
+        // Construct the file path for the specified party name
+        string filePath = Path.Combine(saveDirectoryPath, partyName + ".txt");
+
+        // Check if the file exists before attempting deletion
+        if (File.Exists(filePath))
+        {
+            try
+            {
+                File.Delete(filePath); // Delete the save file
+                listOfPartyNames.Remove(partyName); // Remove the name from the list
+
+                Debug.Log($"Successfully deleted the party: {partyName}");
+            }
+            catch (IOException ex)
+            {
+                Debug.LogError($"Failed to delete the party file due to an error: {ex.Message}");
+            }
+        }
+        else
+        {
+            Debug.LogWarning($"No saved file found for the party: {partyName}");
+        }
+
+        // Refresh the UI to reflect the updated party list
         GameContent.RefreshUI();
     }
-
 }
 
 #endregion
