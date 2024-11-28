@@ -1,9 +1,8 @@
-
 /*
-This RPG data streaming assignment was created by Fernando Restituto with 
+This RPG data streaming assignment was created by Fernando Restituto with
 pixel RPG characters created by Sean Browning.
 */
-
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -68,125 +67,96 @@ public partial class PartyCharacter
 
 #region Assignment Part 1
 
-static public class SaveDataSignifiers
-{
-    public const int PartyCharacter = 1;
-    public const int Equipment = 2;
-}
-
 static public class AssignmentPart1
 {
-    //For creation process, see: https://youtu.be/VVULsmtWco8?si=4MFPVt6ZPzK9Wrna
+    private static string saveFilePath = "SaveDataParty.txt";
 
-    const char SepChar = ',';
-    const string SaveFileName = "PartySaveData.txt";
-
+    /// <summary>
+    /// Called when the save button is pressed. Saves the current party data to a file.
+    /// </summary>
     static public void SavePartyButtonPressed()
     {
-        LinkedList<string> serializedSaveData = SerializeSaveData();
+        using (StreamWriter writer = new StreamWriter(saveFilePath))
+        {
+            foreach (PartyCharacter character in GameContent.partyCharacters)
+            {
+                // Save character stats as a comma-separated string
+                writer.WriteLine($"{character.classID},{character.health},{character.mana},{character.strength},{character.agility},{character.wisdom}");
 
-        #region Save Data To HD
+                // Write equipment data as a space-separated list
+                foreach (int item in character.equipment)
+                {
+                    writer.Write($"{item} ");
+                }
+                writer.WriteLine(); // End the equipment line
+            }
+        }
 
-        StreamWriter sw = new StreamWriter(SaveFileName);
-
-        foreach (string line in serializedSaveData)
-            sw.WriteLine(line);
-
-        sw.Close();
-
-        #endregion
+        Debug.Log("Party data saved successfully.");
     }
 
+    /// <summary>
+    /// Called when the load button is pressed. Loads party data from a file and updates the UI.
+    /// </summary>
     static public void LoadPartyButtonPressed()
     {
-        GameContent.partyCharacters.Clear();
+        GameContent.partyCharacters.Clear(); // Reset party data
 
-        #region Load Data From HD
-
-        LinkedList<string> serializedData = new LinkedList<string>();
-        StreamReader sr = new StreamReader(SaveFileName);
-
-        while (!sr.EndOfStream)
+        if (File.Exists(saveFilePath))
         {
-            string line = sr.ReadLine();
-            serializedData.AddLast(line);
-        }
+            Debug.Log("Save file located.");
 
-        sr.Close();
-
-        #endregion
-
-        DeserializeSaveData(serializedData);
-
-        GameContent.RefreshUI();
-    }
-
-    static private LinkedList<string> SerializeSaveData()
-    {
-        LinkedList<string> serializedData = new LinkedList<string>();
-
-        foreach (PartyCharacter pc in GameContent.partyCharacters)
-        {
-            string concatenatedString = Concatenate(SaveDataSignifiers.PartyCharacter.ToString(),
-                pc.classID.ToString(), pc.health.ToString(),
-                pc.mana.ToString(), pc.strength.ToString(),
-                pc.agility.ToString(), pc.wisdom.ToString());
-
-            serializedData.AddLast(concatenatedString);
-
-            foreach (int e in pc.equipment)
+            using (StreamReader reader = new StreamReader(saveFilePath))
             {
-                concatenatedString = Concatenate(SaveDataSignifiers.Equipment.ToString(), e.ToString());
-                serializedData.AddLast(concatenatedString);
+                string line;
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    // Split the line into attributes
+                    string[] characterData = line.Split(',');
+
+                    if (characterData.Length == 6 &&
+                        int.TryParse(characterData[0], out int classID) &&
+                        int.TryParse(characterData[1], out int health) &&
+                        int.TryParse(characterData[2], out int mana) &&
+                        int.TryParse(characterData[3], out int strength) &&
+                        int.TryParse(characterData[4], out int agility) &&
+                        int.TryParse(characterData[5], out int wisdom))
+                    {
+                        // Create and populate a new character instance
+                        PartyCharacter character = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
+
+                        // Read equipment data
+                        string equipmentLine = reader.ReadLine();
+                        if (!string.IsNullOrEmpty(equipmentLine))
+                        {
+                            foreach (string item in equipmentLine.Split(' '))
+                            {
+                                if (int.TryParse(item, out int equipmentID))
+                                {
+                                    character.equipment.AddLast(equipmentID);
+                                }
+                            }
+                        }
+
+                        GameContent.partyCharacters.AddLast(character);
+                    }
+                    else
+                    {
+                        Debug.LogError($"Failed to parse character data: {line}");
+                    }
+                }
             }
         }
-
-        return serializedData;
-    }
-
-    static private void DeserializeSaveData(LinkedList<string> serializedData)
-    {
-        PartyCharacter pc = null;
-
-        foreach (string line in serializedData)
+        else
         {
-            string[] csv = line.Split(SepChar);
-            int signifier = int.Parse(csv[0]);
-
-            if (signifier == SaveDataSignifiers.PartyCharacter)
-            {
-                pc = new PartyCharacter(int.Parse(csv[1]),
-                    int.Parse(csv[2]), int.Parse(csv[3]),
-                    int.Parse(csv[4]), int.Parse(csv[5]),
-                    int.Parse(csv[6]));
-
-                GameContent.partyCharacters.AddLast(pc);
-            }
-            else if (signifier == SaveDataSignifiers.Equipment)
-            {
-                pc.equipment.AddLast(int.Parse(csv[1]));
-            }
-        }
-    }
-
-    static private string Concatenate(params string[] stringsToJoin)
-    {
-        string joinedString = "";
-
-        foreach (string s in stringsToJoin)
-        {
-            if (joinedString != "")
-                joinedString += SepChar;
-            joinedString += s;
+            Debug.LogError("No save file found.");
         }
 
-        return joinedString;
+        GameContent.RefreshUI(); // Refresh UI with new data
     }
 }
-
-
 #endregion
-
 
 #region Assignment Part 2
 
@@ -261,56 +231,56 @@ static public class AssignmentPart2
     }
 
     static public void LoadPartyDropDownChanged(string selectedName)
+{
+    string filePath = saveDirectoryPath + selectedName + ".txt";
+
+    if (File.Exists(filePath))
     {
-        string filePath = saveDirectoryPath + selectedName + ".txt";
+        GameContent.partyCharacters.Clear();
 
-        if (File.Exists(filePath))
+        using (StreamReader reader = new StreamReader(filePath))
         {
-            GameContent.partyCharacters.Clear();
+            string line;
 
-            using (StreamReader reader = new StreamReader(filePath))
+            while ((line = reader.ReadLine()) != null)
             {
-                string line;
+                string[] characterData = line.Split(',');
 
-                while ((line = reader.ReadLine()) != null)
+                if (characterData.Length == 6 &&
+                    int.TryParse(characterData[0], out int classID) &&
+                    int.TryParse(characterData[1], out int health) &&
+                    int.TryParse(characterData[2], out int mana) &&
+                    int.TryParse(characterData[3], out int strength) &&
+                    int.TryParse(characterData[4], out int agility) &&
+                    int.TryParse(characterData[5], out int wisdom))
                 {
-                    string[] characterData = line.Split(',');
+                    PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
 
-                    if (characterData.Length == 6 &&
-                        int.TryParse(characterData[0], out int classID) &&
-                        int.TryParse(characterData[1], out int health) &&
-                        int.TryParse(characterData[2], out int mana) &&
-                        int.TryParse(characterData[3], out int strength) &&
-                        int.TryParse(characterData[4], out int agility) &&
-                        int.TryParse(characterData[5], out int wisdom))
+                    string equipmentLine = reader.ReadLine();
+                    if (!string.IsNullOrWhiteSpace(equipmentLine))
                     {
-                        PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
-
-                        string equipmentLine = reader.ReadLine();
-                        if (!string.IsNullOrWhiteSpace(equipmentLine))
+                        foreach (string equip in equipmentLine.Split(' '))
                         {
-                            foreach (string equip in equipmentLine.Split(' '))
+                            if (int.TryParse(equip, out int equipmentID))
                             {
-                                if (int.TryParse(equip, out int equipmentID))
-                                {
-                                    pc.equipment.AddLast(equipmentID);
-                                }
+                                pc.equipment.AddLast(equipmentID);
                             }
                         }
-
-                        GameContent.partyCharacters.AddLast(pc);
                     }
+
+                    GameContent.partyCharacters.AddLast(pc);
                 }
             }
+        }
 
-            Debug.Log($"Party '{selectedName}' loaded successfully.");
-            GameContent.RefreshUI();
-        }
-        else
-        {
-            Debug.LogError($"Save file not found for party '{selectedName}'.");
-        }
+        Debug.Log($"Party '{selectedName}' loaded successfully.");
+        GameContent.RefreshUI();
     }
+    else
+    {
+        Debug.LogError($"Save file not found for party '{selectedName}'.");
+    }
+}
 
 
     static public void SavePartyButtonPressed()
