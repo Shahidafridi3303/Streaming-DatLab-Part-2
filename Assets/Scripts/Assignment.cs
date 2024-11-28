@@ -234,17 +234,25 @@ Good luck, journey well.
 
 static public class AssignmentPart2
 {
-
+    private static string saveDirectoryPath = "SavedParties/";
     static List<string> listOfPartyNames;
 
     static public void GameStart()
     {
         listOfPartyNames = new List<string>();
-        listOfPartyNames.Add("sample 1");
-        listOfPartyNames.Add("sample 2");
-        listOfPartyNames.Add("sample 3");
+
+        if (!Directory.Exists(saveDirectoryPath))
+        {
+            Directory.CreateDirectory(saveDirectoryPath);
+        }
+
+        foreach (string filePath in Directory.GetFiles(saveDirectoryPath, "*.txt"))
+        {
+            listOfPartyNames.Add(Path.GetFileNameWithoutExtension(filePath));
+        }
 
         GameContent.RefreshUI();
+        Debug.Log("Loaded existing party names.");
     }
 
     static public List<string> GetListOfPartyNames()
