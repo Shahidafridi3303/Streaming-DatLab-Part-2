@@ -267,6 +267,35 @@ static public class AssignmentPart2
 
     static public void SavePartyButtonPressed()
     {
+        string partyName = GameContent.GetPartyNameFromInput();
+
+        if (string.IsNullOrWhiteSpace(partyName))
+        {
+            Debug.Log("Party name cannot be empty!");
+            return;
+        }
+
+        string filePath = saveDirectoryPath + partyName + ".txt";
+
+        using (StreamWriter writer = new StreamWriter(filePath))
+        {
+            foreach (PartyCharacter pc in GameContent.partyCharacters)
+            {
+                writer.WriteLine($"{pc.classID},{pc.health},{pc.mana},{pc.strength},{pc.agility},{pc.wisdom}");
+                foreach (int equip in pc.equipment)
+                {
+                    writer.Write($"{equip} ");
+                }
+                writer.WriteLine();
+            }
+        }
+
+        if (!listOfPartyNames.Contains(partyName))
+        {
+            listOfPartyNames.Add(partyName);
+        }
+
+        Debug.Log($"Party '{partyName}' created.");
         GameContent.RefreshUI();
     }
 
