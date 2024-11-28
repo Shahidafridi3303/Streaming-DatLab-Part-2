@@ -1,11 +1,14 @@
+
 /*
-This RPG data streaming assignment was created by Fernando Restituto with
+This RPG data streaming assignment was created by Fernando Restituto with 
 pixel RPG characters created by Sean Browning.
 */
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
+
 
 #region Assignment Instructions
 
@@ -65,98 +68,109 @@ public partial class PartyCharacter
 
 #endregion
 
+
 #region Assignment Part 1
 
 static public class AssignmentPart1
 {
-    private static string saveFilePath = "SaveDataParty.txt";
-
-    /// <summary>
-    /// Called when the save button is pressed. Saves the current party data to a file.
-    /// </summary>
+    private static string saveFilePath = "SaveDateParty.txt";
     static public void SavePartyButtonPressed()
     {
         using (StreamWriter writer = new StreamWriter(saveFilePath))
         {
-            foreach (PartyCharacter character in GameContent.partyCharacters)
+            foreach (PartyCharacter pc in GameContent.partyCharacters)
             {
-                // Save character stats as a comma-separated string
-                writer.WriteLine($"{character.classID},{character.health},{character.mana},{character.strength},{character.agility},{character.wisdom}");
+                // Save character attributes in a comma-separated line
+                writer.WriteLine($"{pc.classID},{pc.health},{pc.mana},{pc.strength},{pc.agility},{pc.wisdom}");
 
-                // Write equipment data as a space-separated list
-                foreach (int item in character.equipment)
+                // Save equipment as space-separated values on the next line
+                foreach (int equip in pc.equipment)
                 {
-                    writer.Write($"{item} ");
+                    writer.Write($"{equip} ");
                 }
-                writer.WriteLine(); // End the equipment line
+                writer.WriteLine(); // Ensure a new line after writing the equipment
             }
         }
-
-        Debug.Log("Party data saved successfully.");
+        Debug.Log("Party data saved successfully!");
     }
 
-    /// <summary>
-    /// Called when the load button is pressed. Loads party data from a file and updates the UI.
-    /// </summary>
+
     static public void LoadPartyButtonPressed()
     {
-        GameContent.partyCharacters.Clear(); // Reset party data
+        GameContent.partyCharacters.Clear(); // Clear existing party data
 
         if (File.Exists(saveFilePath))
         {
-            Debug.Log("Save file located.");
+            Debug.Log("Save file found!");
 
             using (StreamReader reader = new StreamReader(saveFilePath))
             {
                 string line;
 
-                while ((line = reader.ReadLine()) != null)
+                while ((line = reader.ReadLine()) != null) // Read character attributes line by line
                 {
-                    // Split the line into attributes
+                    Debug.Log($"Line content: {line}");
+
+                    // Split the line by commas to get character attributes
                     string[] characterData = line.Split(',');
 
-                    if (characterData.Length == 6 &&
-                        int.TryParse(characterData[0], out int classID) &&
-                        int.TryParse(characterData[1], out int health) &&
-                        int.TryParse(characterData[2], out int mana) &&
-                        int.TryParse(characterData[3], out int strength) &&
-                        int.TryParse(characterData[4], out int agility) &&
-                        int.TryParse(characterData[5], out int wisdom))
+                    // Ensure there are exactly 6 attributes (classID, health, mana, strength, agility, wisdom)
+                    if (characterData.Length == 6)
                     {
-                        // Create and populate a new character instance
-                        PartyCharacter character = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
-
-                        // Read equipment data
-                        string equipmentLine = reader.ReadLine();
-                        if (!string.IsNullOrEmpty(equipmentLine))
+                        // Parse the character attributes
+                        if (int.TryParse(characterData[0], out int classID) &&
+                            int.TryParse(characterData[1], out int health) &&
+                            int.TryParse(characterData[2], out int mana) &&
+                            int.TryParse(characterData[3], out int strength) &&
+                            int.TryParse(characterData[4], out int agility) &&
+                            int.TryParse(characterData[5], out int wisdom))
                         {
-                            foreach (string item in equipmentLine.Split(' '))
+                            // Create the PartyCharacter
+                            PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
+
+                            // Read the next line, which contains the equipment data
+                            string equipmentLine = reader.ReadLine();
+                            if (!string.IsNullOrWhiteSpace(equipmentLine)) // Check if the equipment line is not empty
                             {
-                                if (int.TryParse(item, out int equipmentID))
+                                string[] equipmentData = equipmentLine.Split(' ');
+
+                                foreach (string equip in equipmentData)
                                 {
-                                    character.equipment.AddLast(equipmentID);
+                                    if (int.TryParse(equip, out int equipmentID))
+                                    {
+                                        pc.equipment.AddLast(equipmentID); // Add equipment to the character
+                                    }
                                 }
                             }
-                        }
 
-                        GameContent.partyCharacters.AddLast(character);
+                            // Add the character to the party list
+                            GameContent.partyCharacters.AddLast(pc);
+                        }
+                        else
+                        {
+                            Debug.LogError($"Failed to parse character attributes: {line}");
+                        }
                     }
                     else
                     {
-                        Debug.LogError($"Failed to parse character data: {line}");
+                        Debug.LogError("Incorrect number of data elements in the line!");
                     }
                 }
             }
         }
         else
         {
-            Debug.LogError("No save file found.");
+            Debug.LogError("Save file not found!");
         }
 
-        GameContent.RefreshUI(); // Refresh UI with new data
+        GameContent.RefreshUI(); // Update the UI with the loaded data
     }
+
 }
+
+
 #endregion
+
 
 #region Assignment Part 2
 
@@ -166,7 +180,7 @@ static public class AssignmentPart1
 //  This will enable the needed UI/function calls for your to proceed with your assignment.
 static public class AssignmentConfiguration
 {
-    public const int PartOfAssignmentThatIsInDevelopment = 1;
+    public const int PartOfAssignmentThatIsInDevelopment = 2;
 }
 
 /*
@@ -204,155 +218,185 @@ Good luck, journey well.
 
 static public class AssignmentPart2
 {
-    private static string saveDirectoryPath = "SavedParties/";
-    static List<string> listOfPartyNames;
+    private static readonly string saveDirectoryPath = "SavedParties/";  // Save directory path
+    private static List<string> listOfPartyNames = new List<string>();  // List to hold party names
 
+    // Initialize the game by ensuring the save directory exists and loading saved party names
     static public void GameStart()
     {
-        listOfPartyNames = new List<string>();
+        EnsureSaveDirectoryExists();
+        LoadPartyNames();
+        GameContent.RefreshUI();  // Refresh UI after loading data
+    }
 
+    // Ensure the save directory exists; create it if not
+    static private void EnsureSaveDirectoryExists()
+    {
         if (!Directory.Exists(saveDirectoryPath))
         {
             Directory.CreateDirectory(saveDirectoryPath);
         }
+    }
 
+    // Load party names from the save directory
+    static private void LoadPartyNames()
+    {
+        listOfPartyNames.Clear();
         foreach (string filePath in Directory.GetFiles(saveDirectoryPath, "*.txt"))
         {
-            listOfPartyNames.Add(Path.GetFileNameWithoutExtension(filePath));
+            listOfPartyNames.Add(Path.GetFileNameWithoutExtension(filePath));  // Add party name without extension
         }
-
-        GameContent.RefreshUI();
-        Debug.Log("Loaded existing party names.");
     }
 
-    static public List<string> GetListOfPartyNames()
-    {
-        return listOfPartyNames;
-    }
+    // Get the list of party names
+    static public List<string> GetListOfPartyNames() => listOfPartyNames;
 
+    // Load a selected party based on the dropdown choice
     static public void LoadPartyDropDownChanged(string selectedName)
-{
-    string filePath = saveDirectoryPath + selectedName + ".txt";
-
-    if (File.Exists(filePath))
     {
-        GameContent.partyCharacters.Clear();
+        string filePath = GetFilePath(selectedName);
+
+        if (File.Exists(filePath))
+        {
+            LoadPartyData(filePath);
+            GameContent.RefreshUI();  // Refresh UI after loading party
+        }
+        else
+        {
+            Debug.LogError($"Save file not found for the party: {selectedName}");
+        }
+    }
+
+    // Helper method to construct file path
+    static private string GetFilePath(string partyName) => Path.Combine(saveDirectoryPath, partyName + ".txt");
+
+    // Load party data from the save file
+    static private void LoadPartyData(string filePath)
+    {
+        GameContent.partyCharacters.Clear();  // Clear existing party data
 
         using (StreamReader reader = new StreamReader(filePath))
         {
             string line;
-
             while ((line = reader.ReadLine()) != null)
             {
                 string[] characterData = line.Split(',');
 
-                if (characterData.Length == 6 &&
-                    int.TryParse(characterData[0], out int classID) &&
-                    int.TryParse(characterData[1], out int health) &&
-                    int.TryParse(characterData[2], out int mana) &&
-                    int.TryParse(characterData[3], out int strength) &&
-                    int.TryParse(characterData[4], out int agility) &&
-                    int.TryParse(characterData[5], out int wisdom))
+                // Parse character data
+                if (characterData.Length == 6 && TryParseCharacterData(characterData, out PartyCharacter pc))
                 {
-                    PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
-
+                    // Read equipment data from next line
                     string equipmentLine = reader.ReadLine();
                     if (!string.IsNullOrWhiteSpace(equipmentLine))
                     {
-                        foreach (string equip in equipmentLine.Split(' '))
-                        {
-                            if (int.TryParse(equip, out int equipmentID))
-                            {
-                                pc.equipment.AddLast(equipmentID);
-                            }
-                        }
+                        ParseEquipmentData(pc, equipmentLine);
                     }
 
-                    GameContent.partyCharacters.AddLast(pc);
+                    GameContent.partyCharacters.AddLast(pc);  // Add character to the party
                 }
             }
         }
 
-        Debug.Log($"Party '{selectedName}' loaded successfully.");
-        GameContent.RefreshUI();
+        Debug.Log($"Party loaded successfully: {Path.GetFileNameWithoutExtension(filePath)}");
     }
-    else
+
+    // Try parsing the character data
+    static private bool TryParseCharacterData(string[] data, out PartyCharacter pc)
     {
-        Debug.LogError($"Save file not found for party '{selectedName}'.");
+        pc = null;
+        if (int.TryParse(data[0], out int classID) &&
+            int.TryParse(data[1], out int health) &&
+            int.TryParse(data[2], out int mana) &&
+            int.TryParse(data[3], out int strength) &&
+            int.TryParse(data[4], out int agility) &&
+            int.TryParse(data[5], out int wisdom))
+        {
+            pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
+            return true;
+        }
+        return false;
     }
-}
 
+    // Parse and add equipment data
+    static private void ParseEquipmentData(PartyCharacter pc, string equipmentLine)
+    {
+        string[] equipmentData = equipmentLine.Split(' ');
 
+        foreach (string equip in equipmentData)
+        {
+            if (int.TryParse(equip, out int equipmentID))
+            {
+                pc.equipment.AddLast(equipmentID);
+            }
+        }
+    }
+
+    // Save the current party to a file
     static public void SavePartyButtonPressed()
     {
         string partyName = GameContent.GetPartyNameFromInput();
 
         if (string.IsNullOrWhiteSpace(partyName))
         {
-            Debug.Log("Party name cannot be empty!");
+            Debug.LogError("Party name cannot be empty!");
             return;
         }
 
-        string filePath = saveDirectoryPath + partyName + ".txt";
+        string filePath = GetFilePath(partyName);
 
+        SavePartyData(filePath);
+        AddPartyToList(partyName);
+
+        Debug.Log($"Party saved successfully: {partyName}");
+        GameContent.RefreshUI();
+    }
+
+    // Save party data to file
+    static private void SavePartyData(string filePath)
+    {
         using (StreamWriter writer = new StreamWriter(filePath))
         {
             foreach (PartyCharacter pc in GameContent.partyCharacters)
             {
                 writer.WriteLine($"{pc.classID},{pc.health},{pc.mana},{pc.strength},{pc.agility},{pc.wisdom}");
-                foreach (int equip in pc.equipment)
-                {
-                    writer.Write($"{equip} ");
-                }
-                writer.WriteLine();
+                writer.WriteLine(string.Join(" ", pc.equipment));  // Write equipment in one line
             }
         }
+    }
 
+    // Add party name to the list if it's not already present
+    static private void AddPartyToList(string partyName)
+    {
         if (!listOfPartyNames.Contains(partyName))
         {
             listOfPartyNames.Add(partyName);
         }
-
-        Debug.Log($"Party '{partyName}' created.");
-        GameContent.RefreshUI();
     }
 
+    // Delete the selected party
     static public void DeletePartyButtonPressed()
     {
-        // Retrieve the party name entered by the user
         string partyName = GameContent.GetPartyNameFromInput();
 
-        // Validate the party name
         if (string.IsNullOrWhiteSpace(partyName))
         {
-            Debug.LogError("Party name cannot be empty or whitespace!");
+            Debug.LogError("Party name cannot be empty!");
             return;
         }
 
-        // Construct the file path for the specified party name
-        string filePath = Path.Combine(saveDirectoryPath, partyName + ".txt");
+        string filePath = GetFilePath(partyName);
 
-        // Check if the file exists before attempting deletion
         if (File.Exists(filePath))
         {
-            try
-            {
-                File.Delete(filePath); // Delete the save file
-                listOfPartyNames.Remove(partyName); // Remove the name from the list
-
-                Debug.Log($"Successfully deleted the party: {partyName}");
-            }
-            catch (IOException ex)
-            {
-                Debug.LogError($"Failed to delete the party file due to an error: {ex.Message}");
-            }
+            File.Delete(filePath);
+            listOfPartyNames.Remove(partyName);
+            Debug.Log($"Party successfully deleted: {partyName}");
         }
         else
         {
-            Debug.LogWarning($"No saved file found for the party: {partyName}");
+            Debug.LogError($"Save file not found for party: {partyName}");
         }
 
-        // Refresh the UI to reflect the updated party list
         GameContent.RefreshUI();
     }
 }
