@@ -262,8 +262,56 @@ static public class AssignmentPart2
 
     static public void LoadPartyDropDownChanged(string selectedName)
     {
-        GameContent.RefreshUI();
+        string filePath = saveDirectoryPath + selectedName + ".txt";
+
+        if (File.Exists(filePath))
+        {
+            GameContent.partyCharacters.Clear();
+
+            using (StreamReader reader = new StreamReader(filePath))
+            {
+                string line;
+
+                while ((line = reader.ReadLine()) != null)
+                {
+                    string[] characterData = line.Split(',');
+
+                    if (characterData.Length == 6 &&
+                        int.TryParse(characterData[0], out int classID) &&
+                        int.TryParse(characterData[1], out int health) &&
+                        int.TryParse(characterData[2], out int mana) &&
+                        int.TryParse(characterData[3], out int strength) &&
+                        int.TryParse(characterData[4], out int agility) &&
+                        int.TryParse(characterData[5], out int wisdom))
+                    {
+                        PartyCharacter pc = new PartyCharacter(classID, health, mana, strength, agility, wisdom);
+
+                        string equipmentLine = reader.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(equipmentLine))
+                        {
+                            foreach (string equip in equipmentLine.Split(' '))
+                            {
+                                if (int.TryParse(equip, out int equipmentID))
+                                {
+                                    pc.equipment.AddLast(equipmentID);
+                                }
+                            }
+                        }
+
+                        GameContent.partyCharacters.AddLast(pc);
+                    }
+                }
+            }
+
+            Debug.Log($"Party '{selectedName}' loaded successfully.");
+            GameContent.RefreshUI();
+        }
+        else
+        {
+            Debug.LogError($"Save file not found for party '{selectedName}'.");
+        }
     }
+
 
     static public void SavePartyButtonPressed()
     {
